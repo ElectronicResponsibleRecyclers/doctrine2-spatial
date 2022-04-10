@@ -164,7 +164,7 @@ abstract class AbstractPoint extends AbstractGeometry
      */
     public function toArray()
     {
-        return array($this->x, $this->y);
+        return [$this->x, $this->y];
     }
 
     /**

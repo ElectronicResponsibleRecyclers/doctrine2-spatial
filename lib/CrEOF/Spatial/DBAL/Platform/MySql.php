@@ -25,6 +25,8 @@ namespace CrEOF\Spatial\DBAL\Platform;
 
 use CrEOF\Spatial\DBAL\Types\AbstractSpatialType;
 use CrEOF\Spatial\PHP\Types\Geography\GeographyInterface;
+use CrEOF\Spatial\DBAL\Types\GeographyType;
+use CrEOF\Spatial\PHP\Types\Geometry\GeometryInterface;
 
 /**
  * MySql spatial platform
@@ -35,8 +37,35 @@ use CrEOF\Spatial\PHP\Types\Geography\GeographyInterface;
 class MySql extends AbstractPlatform
 {
     /**
-     * Gets the SQL declaration snippet for a field of this type.
+     * For Geographic types MySQL follows the WKT specifications and returns (latitude,longitude) while (x,y) / (longitude,latitude) is expected.
      *
+     * Using the following option the preferred axis-order can be indicated.
+     *
+     * @var string
+     */
+    const AXIS_ORDER_OPTION = 'axis-order=long-lat';
+
+    /**
+     * @param AbstractSpatialType $type
+     * @param GeometryInterface   $value
+     *
+     * @return string
+     */
+    public function convertToDatabaseValue(AbstractSpatialType $type, GeometryInterface $value)
+    {
+        return sprintf('%s(%s)', strtoupper($value->getType()), $value);
+    }
+
+    /**
+     * Optionally a SRID can be set to be used for Geographic types.
+     *
+     * @var int|null
+     */
+    public static $srid = 0;
+
+    /**
+     * Gets the SQL declaration snippet for a field of this type.
+     *warehouse.php
      * @param array $fieldDeclaration
      *
      * @return string
@@ -47,7 +76,7 @@ class MySql extends AbstractPlatform
             return 'GEOMETRY';
         }
 
-        return strtoupper($fieldDeclaration['type']->getSQLType());
+        return strtoupper($fieldDeclaration['type']->getSQLType() .' SRID '.self::$srid);
     }
 
     /**
@@ -58,7 +87,9 @@ class MySql extends AbstractPlatform
      */
     public function convertToPHPValueSQL(AbstractSpatialType $type, $sqlExpr)
     {
-        return sprintf('AsBinary(%s)', $sqlExpr);
+        return $type instanceof GeographyType
+            ? sprintf('ST_AsBinary(%s, "%s")', $sqlExpr, self::AXIS_ORDER_OPTION)
+            : sprintf('ST_AsBinary(%s)', $sqlExpr);
     }
 
     /**
@@ -69,6 +100,9 @@ class MySql extends AbstractPlatform
      */
     public function convertToDatabaseValueSQL(AbstractSpatialType $type, $sqlExpr)
     {
-        return sprintf('GeomFromText(%s)', $sqlExpr);
+        return $type instanceof GeographyType && is_int(self::$srid)
+            ? sprintf('ST_GeomFromText(%s, %d)', $sqlExpr, self::$srid)
+            : sprintf('ST_GeomFromText(%s)', $sqlExpr);
     }
+
 }

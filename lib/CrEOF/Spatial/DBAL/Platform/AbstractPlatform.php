@@ -86,10 +86,6 @@ abstract class AbstractPlatform implements PlatformInterface
     {
         $sqlType = strtolower($type->getSQLType());
 
-        if ($type instanceof GeographyType && $sqlType !== 'geography') {
-            $sqlType = sprintf('geography(%s)', $sqlType);
-        }
-
         return array($sqlType);
     }
 

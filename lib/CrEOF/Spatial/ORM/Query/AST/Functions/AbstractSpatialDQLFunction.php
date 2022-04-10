@@ -27,8 +27,10 @@ use CrEOF\Spatial\Exception\UnsupportedPlatformException;
 use Doctrine\DBAL\Platforms\AbstractPlatform;
 use Doctrine\ORM\Query\AST\Functions\FunctionNode;
 use Doctrine\ORM\Query\AST\Node;
+use Doctrine\ORM\Query\AST\Subselect;
 use Doctrine\ORM\Query\Lexer;
 use Doctrine\ORM\Query\Parser;
+use Doctrine\ORM\Query\QueryException;
 use Doctrine\ORM\Query\SqlWalker;
 
 /**
@@ -65,6 +67,11 @@ abstract class AbstractSpatialDQLFunction extends FunctionNode
     protected $maxGeomExpr;
 
     /**
+     * @var Subselect
+     */
+    private $subSelect;
+
+    /**
      * @param Parser $parser
      */
     public function parse(Parser $parser)
@@ -74,7 +81,11 @@ abstract class AbstractSpatialDQLFunction extends FunctionNode
         $parser->match(Lexer::T_IDENTIFIER);
         $parser->match(Lexer::T_OPEN_PARENTHESIS);
 
-        $this->geomExpr[] = $parser->ArithmeticPrimary();
+        if ($lexer->lookahead['type'] === Lexer::T_SELECT) {
+            $this->geomExpr[] = $parser->Subselect();
+        } else {
+            $this->geomExpr[] = $parser->ArithmeticPrimary();
+        }
 
         while (count($this->geomExpr) < $this->minGeomExpr || (($this->maxGeomExpr === null || count($this->geomExpr) < $this->maxGeomExpr) && $lexer->lookahead['type'] != Lexer::T_CLOSE_PARENTHESIS)) {
             $parser->match(Lexer::T_COMMA);
@@ -95,8 +106,14 @@ abstract class AbstractSpatialDQLFunction extends FunctionNode
         $this->validatePlatform($sqlWalker->getConnection()->getDatabasePlatform());
 
         $arguments = array();
+
         foreach ($this->geomExpr as $expression) {
-            $arguments[] = $expression->dispatch($sqlWalker);
+            $arg = $expression->dispatch($sqlWalker);
+
+            if ($expression instanceof Subselect) {
+                $arg = "($arg)";
+            }
+            $arguments[] = $arg;
         }
 
         return sprintf('%s(%s)', $this->functionName, implode(', ', $arguments));
