@@ -29,6 +29,8 @@ use CrEOF\Spatial\DBAL\Platform\PlatformInterface;
 use CrEOF\Spatial\PHP\Types\Geography\GeographyInterface;
 use CrEOF\Spatial\PHP\Types\Geometry\GeometryInterface;
 use Doctrine\DBAL\Platforms\AbstractPlatform;
+use Doctrine\DBAL\Platforms\MySQLPlatform;
+use Doctrine\DBAL\Platforms\PostgreSQLPlatform;
 use Doctrine\DBAL\Types\Type;
 
 /**
@@ -82,7 +84,7 @@ abstract class AbstractSpatialType extends Type
      * @throws InvalidValueException
      * @throws UnsupportedPlatformException
      */
-    public function convertToDatabaseValue($value, AbstractPlatform $platform)
+    public function convertToDatabaseValue($value, AbstractPlatform $platform): mixed
     {
         if ($value === null) {
             return $value;
@@ -103,7 +105,7 @@ abstract class AbstractSpatialType extends Type
      *
      * @return string
      */
-    public function convertToPHPValueSQL($sqlExpr, $platform)
+    public function convertToPHPValueSQL($sqlExpr, $platform): string
     {
         return $this->getSpatialPlatform($platform)->convertToPHPValueSQL($this, $sqlExpr);
     }
@@ -116,7 +118,7 @@ abstract class AbstractSpatialType extends Type
      *
      * @return string
      */
-    public function convertToDatabaseValueSQL($sqlExpr, AbstractPlatform $platform)
+    public function convertToDatabaseValueSQL($sqlExpr, AbstractPlatform $platform): string
     {
         return $this->getSpatialPlatform($platform)->convertToDatabaseValueSQL($this, $sqlExpr);
     }
@@ -129,7 +131,7 @@ abstract class AbstractSpatialType extends Type
      *
      * @return mixed
      */
-    public function convertToPHPValue($value, AbstractPlatform $platform)
+    public function convertToPHPValue($value, AbstractPlatform $platform): mixed
     {
         if (null === $value) {
             return null;
@@ -160,7 +162,7 @@ abstract class AbstractSpatialType extends Type
      *
      * @return string
      */
-    public function getSQLDeclaration(array $fieldDeclaration, AbstractPlatform $platform)
+    public function getSQLDeclaration(array $fieldDeclaration, AbstractPlatform $platform): string
     {
         return $this->getSpatialPlatform($platform)->getSQLDeclaration($fieldDeclaration);
     }
@@ -172,7 +174,7 @@ abstract class AbstractSpatialType extends Type
      *
      * @return array
      */
-    public function getMappedDatabaseTypes(AbstractPlatform $platform)
+    public function getMappedDatabaseTypes(AbstractPlatform $platform): array
     {
         return $this->getSpatialPlatform($platform)->getMappedDatabaseTypes($this);
     }
@@ -201,13 +203,19 @@ abstract class AbstractSpatialType extends Type
      */
     private function getSpatialPlatform(AbstractPlatform $platform)
     {
-        $const = sprintf('self::PLATFORM_%s', strtoupper($platform->getName()));
-
-        if (! defined($const)) {
-            throw new UnsupportedPlatformException(sprintf('DBAL platform "%s" is not currently supported.', $platform->getName()));
+        $const = '';
+        if ($platform instanceof MySQLPlatform) {
+            $const = self::PLATFORM_MYSQL;
+        } else if ($platform instanceof PostgreSQLPlatform) {
+            $const = self::PLATFORM_POSTGRESQL;
         }
 
-        $class = sprintf('CrEOF\Spatial\DBAL\Platform\%s', constant($const));
+
+        if ($const === '') {
+            throw new UnsupportedPlatformException(sprintf('DBAL platform "%s" is not currently supported.', $platform::class));
+        }
+
+        $class = sprintf('CrEOF\Spatial\DBAL\Platform\%s', $const);
 
         return new $class;
     }
