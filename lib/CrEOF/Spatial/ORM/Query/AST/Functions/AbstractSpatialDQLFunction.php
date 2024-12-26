@@ -88,7 +88,7 @@ abstract class AbstractSpatialDQLFunction extends FunctionNode
             $this->geomExpr[] = $parser->ArithmeticPrimary();
         }
 
-        while (count($this->geomExpr) < $this->minGeomExpr || (($this->maxGeomExpr === null || count($this->geomExpr) < $this->maxGeomExpr) && $lexer->lookahead['type'] != TokenType::T_CLOSE_PARENTHESIS)) {
+        while (count($this->geomExpr) < $this->minGeomExpr || (($this->maxGeomExpr === null || count($this->geomExpr) < $this->maxGeomExpr) && $lexer->lookahead->type != TokenType::T_CLOSE_PARENTHESIS)) {
             $parser->match(TokenType::T_COMMA);
 
             $this->geomExpr[] = $parser->ArithmeticPrimary();
