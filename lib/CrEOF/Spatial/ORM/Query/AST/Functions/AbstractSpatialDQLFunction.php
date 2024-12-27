@@ -127,12 +127,6 @@ abstract class AbstractSpatialDQLFunction extends FunctionNode
      */
     protected function validatePlatform(AbstractPlatform $platform)
     {
-        $platformName = $platform->getName();
 
-        if (isset($this->platforms) && !in_array($platformName, $this->platforms)) {
-            throw new UnsupportedPlatformException(
-                sprintf('DBAL platform "%s" is not currently supported.', $platformName)
-            );
-        }
     }
 }
